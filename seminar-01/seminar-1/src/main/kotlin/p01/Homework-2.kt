@@ -47,7 +47,10 @@ class AddCommand(private val comArr: List<String>) : AppCommand() {
                         ADD_ERROR_MSG = "Некорректный телефон"
                         false
                     } else true
-                else -> false
+                else -> {
+                    ADD_ERROR_MSG = "Неизвестный параметр " + comArr[2]
+                    false
+                }
             }
         }
         ADD_ERROR_MSG = ERROR_COUNT_COMMANDS_FOR_ADD_MESSAGE
