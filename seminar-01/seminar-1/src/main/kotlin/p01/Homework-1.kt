@@ -38,7 +38,6 @@ fun addRecord(com: String, value: String): Boolean {
 }
 
 fun parsePhone(phone: String): Boolean = phone.matches(Regex("""^\+?\d+${'$'}"""))
-
 fun parseMail(mail: String): Boolean = mail.matches(Regex("^[A-Za-z](.*)([@]{1})(.{1,})(\\.)(.{1,})"))
 
 fun printResult(msg: String) = println(msg)
