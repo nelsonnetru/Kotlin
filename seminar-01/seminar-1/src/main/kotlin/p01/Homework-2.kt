@@ -107,13 +107,10 @@ fun main() {
             is HelpCommand -> println(resultCommand)
             is ShowCommand -> println(person ?: NOT_INIT_MESSAGE)
             is AddCommand -> {
-                if (resultCommand.isValid()) {
-                    person = resultCommand.add()
-                    println(person ?: (ADD_PERSON_ERROR_MESSAGE + " (" + resultCommand.ADD_ERROR_MSG + ")"))
-                } else
-                    println(ADD_PERSON_ERROR_MESSAGE + " (" + resultCommand.ADD_ERROR_MSG + ")\n" + HelpCommand)
+                person = resultCommand.add()
+                println(person ?: (ADD_PERSON_ERROR_MESSAGE + " (" + resultCommand.ADD_ERROR_MSG + ")" + HelpCommand))
             }
-            null -> println(ERROR_MESSAGE)
+            null -> println(ERROR_MESSAGE + HelpCommand)
         }
     }
 }
