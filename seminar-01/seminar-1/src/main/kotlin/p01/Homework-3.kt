@@ -248,7 +248,7 @@ class JsonObject {
     }
 
     override fun toString(): String {
-        val properties = map.entries.joinToString(",\n    ") { (key, value) ->
+        val properties = map.entries.joinToString(",\n\t") { (key, value) ->
             "\"$key\": ${if (value is String) "\"$value\"" else value}"
         }
         return "{\n\t$properties\n}"
