@@ -179,22 +179,13 @@ class ExportCommand(private val comArr: List<String>): Command  {
 class FindByParam(private val comArr: List<String>) : Command {
     var showErrorMsg: String = ""
 
-    fun find(phoneBook: MutableMap<String, Person>): MutableMap<String, Person>? {
+    fun find(phoneBook: MutableMap<String, Person>): Map<String, Person>? {
         if (this.isValid()) {
-            val findResult: MutableMap<String, Person> = mutableMapOf()
-            var findParam: String? = null
+            var findResult:Map<String, Person> = mapOf()
 
-            if (parseMail(comArr[1])) findParam = "email"
-            else if (parsePhone(comArr[1])) findParam = "phone"
+            if (parseMail(comArr[1])) findResult = phoneBook.filter { (_, v) -> v.email.contains(comArr[1]) }
+            else if (parsePhone(comArr[1])) findResult = phoneBook.filter { (_, v) -> v.phone.contains(comArr[1]) }
 
-            for (person in phoneBook) {
-                val result = when (findParam) {
-                    "email" -> person.value.email.find {it == comArr[1] }
-                    "phone" -> person.value.phone.find { it == comArr[1] }
-                    else -> null
-                }
-                if (result != null) findResult[person.value.name] = person.value
-            }
             if (findResult.isNotEmpty()) return findResult
             else showErrorMsg = FIND_ERROR_MESSAGE
         } else showErrorMsg = ERROR_COUNT_COMMANDS
