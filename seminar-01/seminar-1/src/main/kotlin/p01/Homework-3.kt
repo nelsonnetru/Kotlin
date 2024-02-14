@@ -1,5 +1,20 @@
 package p01
 
+import java.io.File
+
+/*
+add Tom email tommy@gmail.com
+add Mike email mike@gmail.com
+AddEmail Mike mike2@mail.ru
+AddEmail Tom tom@mail.ru
+AddPhone Tom 789456
+AddPhone Tom 5552233
+AddPhone Mike 123456789
+show Mike
+show Tom
+find 789456
+*/
+
 const val KEY_FOR_SUCCESS_ADD_PARAMETER: String = "ok"
 const val ERROR_PHONE_FORMAT: String = "Некорректный телефон"
 const val ERROR_EMAIL_FORMAT: String = "Некорректный email"
@@ -11,8 +26,14 @@ const val COUNT_COMMANDS_FOR_ADD: Int = 4
 const val COUNT_COMMANDS_FOR_ADD_PARAMETER: Int = 3
 const val COUNT_COMMANDS_FOR_SHOW: Int = 2
 const val COUNT_COMMANDS_FOR_FIND: Int = 2
+const val COUNT_COMMANDS_FOR_EXPORT: Int = 2
 const val ADD_PERSON_ERROR_MESSAGE: String = "Ошибка: не удалось добавить персону"
 const val ADD_PERSON_ERROR_MESSAGE_DUPLICATE: String = "Запись с таким именем уже добавлена"
+const val ERROR_BOOK_IS_EMPTY = "Коллекция контактов пуста"
+const val EXPORT_FILE_PATH = "src/main/resources/"
+const val EXPORT_FILE_EXTENSION = ".json"
+const val EXPORT_SUCCESS_MESSAGE = "Данные успешно экспортированы в файл "
+
 
 fun parsePhone(phone: String): Boolean = phone.matches(Regex("""^\+?\d+${'$'}"""))
 fun parseMail(mail: String): Boolean = mail.matches(Regex("""^[A-Za-z\d](.*)(@)(.+)(\.)([A-Za-z]{2,})"""))
@@ -30,7 +51,7 @@ sealed interface Command {
 class AddCommand(private val comArr: List<String>) : Command {
     var addErrorMsg: String = ""
 
-    fun add(phoneBook: MutableList<Person>): Person? {
+    fun add(phoneBook: MutableMap<String, Person>): Person? {
         if (this.isValid()) {
             if (findByNamePerson(phoneBook, comArr[1]) == null) {
                 val newPerson = Person(comArr[1])
@@ -67,6 +88,9 @@ object HelpCommand : Command {
 • AddEmail <Имя> <Адрес электронной почты>
 • add <Имя> phone <Номер телефона>
 • add <Имя> email <Адрес электронной почты>
+• find <email> поиск по email
+• find <телефон> поиск по телефону
+• export <Путь и название файла>
 После выполнения команды, кроме команды exit, программа ждёт следующую команду.
 """.trimIndent()
 }
@@ -78,10 +102,10 @@ object ExitCommand : Command {
 class ShowCommand(private val comArr: List<String>) : Command {
     var showErrorMsg: String = ""
 
-    fun showRecord(phoneBook: MutableList<Person>): Person? {
+    fun showRecord(phoneBook: MutableMap<String, Person>): Person? {
         if (this.isValid()) {
             for (record in phoneBook) {
-                if (record.name == comArr[1]) return record
+                if (record.value.name == comArr[1]) return record.value
             }
             showErrorMsg = FIND_ERROR_MESSAGE
         } else showErrorMsg = ERROR_COUNT_COMMANDS
@@ -99,7 +123,7 @@ open class AddEmail(private val comArr: List<String>) : Command {
     open var parameterName = "email"
     var showErrorMsg: String = ""
 
-    fun add(phoneBook: MutableList<Person>): Person? {
+    fun add(phoneBook: MutableMap<String, Person>): Person? {
         if (this.isValid()) {
             val person = findByNamePerson(phoneBook, comArr[1])
             if (person != null) {
@@ -122,12 +146,42 @@ class AddPhone(comArr: List<String>) : AddEmail(comArr) {
     override var parameterName = "phone"
 }
 
+class ExportCommand(private val comArr: List<String>): Command  {
+    var showErrorMsg: String = ""
+    var showResultMessageExport: String = ""
+
+    fun exportToJSON (phoneBook: MutableMap<String, Person>) : Boolean {
+        if (this.isValid()) {
+            if (phoneBook.isNotEmpty()) {
+                val jsonObjects = phoneBook.values.map { person ->
+                    json {
+                        addProperty("name", person.name)
+                        addProperty("phone", person.phone)
+                        addProperty("email", person.email)
+                    }
+                }
+                val jsonFormat = "[${jsonObjects.joinToString(", ")}]"
+                File(EXPORT_FILE_PATH + comArr[1] + EXPORT_FILE_EXTENSION).writeText(jsonFormat)
+                showResultMessageExport = EXPORT_SUCCESS_MESSAGE + EXPORT_FILE_PATH + comArr[1] + EXPORT_FILE_EXTENSION
+                return true
+            } else showErrorMsg = ERROR_BOOK_IS_EMPTY
+        } else showErrorMsg = ERROR_COUNT_COMMANDS
+
+        return false
+    }
+
+    override fun isValid(): Boolean {
+        if (comArr.size == COUNT_COMMANDS_FOR_EXPORT) return true
+        return false
+    }
+}
+
 class FindByParam(private val comArr: List<String>) : Command {
     var showErrorMsg: String = ""
 
-    fun find(phoneBook: MutableList<Person>): List<Person>? {
+    fun find(phoneBook: MutableMap<String, Person>): MutableMap<String, Person>? {
         if (this.isValid()) {
-            val findResult: MutableList<Person> = mutableListOf()
+            val findResult: MutableMap<String, Person> = mutableMapOf()
             var findParam: String? = null
 
             if (parseMail(comArr[1])) findParam = "email"
@@ -135,19 +189,18 @@ class FindByParam(private val comArr: List<String>) : Command {
 
             for (person in phoneBook) {
                 val result = when (findParam) {
-                    "email" -> person.email.find { it == comArr[1] }
-                    "phone" -> person.phone.find { it == comArr[1] }
+                    "email" -> person.value.email.find {it == comArr[1] }
+                    "phone" -> person.value.phone.find { it == comArr[1] }
                     else -> null
                 }
-                if (result != null) findResult.add(person)
+                if (result != null) findResult[person.value.name] = person.value
             }
-            if (findResult.size > 0) return findResult
+            if (findResult.isNotEmpty()) return findResult
             else showErrorMsg = FIND_ERROR_MESSAGE
         } else showErrorMsg = ERROR_COUNT_COMMANDS
 
         return null
     }
-
 
     override fun isValid(): Boolean {
         if (comArr.size == COUNT_COMMANDS_FOR_FIND) return true
@@ -172,9 +225,9 @@ fun addParamToPerson(person: Person, parameterName: String, parameterValue: Stri
     return result
 }
 
-fun findByNamePerson(phoneBook: MutableList<Person>, searchValue: String): Person? {
+fun findByNamePerson(phoneBook: MutableMap<String, Person>, searchValue: String): Person? {
     for (record in phoneBook) {
-        if (record.name == searchValue) return record
+        if (record.value.name == searchValue) return record.value
     }
     return null
 }
@@ -190,15 +243,35 @@ fun readCommand(strCommand: String?): Command? {
         "find" -> FindByParam(comArr)
         "help" -> HelpCommand
         "exit" -> ExitCommand
+        "export" -> ExportCommand(comArr)
         else -> null
     }
 
 }
 
+class JsonObject {
+    private val map = mutableMapOf<String, Any>()
+
+    fun addProperty(key: String, value: Any) {
+        map[key] = value
+    }
+
+    override fun toString(): String {
+        val properties = map.entries.joinToString(",\n    ") { (key, value) ->
+            "\"$key\": ${if (value is String) "\"$value\"" else value}"
+        }
+        return "{\n\t$properties\n}"
+    }
+}
+
+fun json(init: JsonObject.() -> Unit): JsonObject {
+    return JsonObject().apply(init)
+}
+
 fun main() {
-    val phoneBook: MutableList<Person> = mutableListOf()
+    val phoneBook: MutableMap<String, Person> = mutableMapOf()
     var com: String?
-    var person: Person? = null
+    var person: Person?
     while (true) {
         print("Введите команду: ")
         com = readlnOrNull()
@@ -215,7 +288,7 @@ fun main() {
             is AddCommand -> {
                 person = resultCommand.add(phoneBook)
                 if (person != null) {
-                    phoneBook.add(person)
+                    phoneBook[person.name] = person
                     println(phoneBook)
                 } else {
                     println(ADD_PERSON_ERROR_MESSAGE + " (" + resultCommand.addErrorMsg + ")" + HelpCommand)
@@ -230,8 +303,12 @@ fun main() {
                 println(person ?: resultCommand.showErrorMsg)
             }
             is FindByParam -> {
-                val foundPersons: List<Person>? = resultCommand.find(phoneBook)
+                val foundPersons: Map<String, Person>? = resultCommand.find(phoneBook)
                 println(foundPersons ?: resultCommand.showErrorMsg)
+            }
+            is ExportCommand -> {
+                if (resultCommand.exportToJSON(phoneBook)) println(resultCommand.showResultMessageExport)
+                else println(resultCommand.showErrorMsg)
             }
             null -> println(ERROR_MESSAGE + HelpCommand)
         }
